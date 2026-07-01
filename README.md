@@ -1,13 +1,33 @@
 # Hospital Management Backend API
 
-A Django REST Framework backend for managing a hierarchical hospital network:
-Headquarters → Sub Headquarters, Doctors, Medical Reps (MRs), and their daily
-Visits — with JWT authentication, 5-level role-based access control, dashboard
-metrics, and filterable reports.
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-5.2-092E20?logo=django&logoColor=white)
+![DRF](https://img.shields.io/badge/DRF-3.17-A30000)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)
 
-Built against `Python_DRF_Hospital_Assessment_Task.pdf`. See
-[IMPLEMENTATION_PLAN_1.md](IMPLEMENTATION_PLAN_1.md) for the full phase-by-phase
-design log this project was built from.
+A Django REST Framework backend for managing a hierarchical hospital network —
+**Headquarters → Sub Headquarters → Doctors → Medical Reps (MRs)** — and their
+daily field **Visits**. It provides JWT authentication, five-level role-based
+access control (RBAC), role-scoped dashboard metrics, and filterable reporting.
+
+---
+
+## Table of Contents
+
+1. [Tech Stack](#1-tech-stack)
+2. [Architecture](#2-architecture)
+   - [2.1 Role Hierarchy](#21-role-hierarchy)
+   - [2.2 RBAC Matrix](#22-rbac-matrix)
+3. [Getting Started](#3-getting-started)
+   - [3.1 Prerequisites](#31-prerequisites)
+   - [3.2 Clone & Environment Setup](#32-clone--environment-setup)
+   - [3.3 Database (Docker Compose)](#33-database-docker-compose)
+   - [3.4 Migrate & Seed](#34-migrate--seed)
+   - [3.5 Run the Server](#35-run-the-server)
+   - [3.6 Run Tests](#36-run-tests)
+4. [Configuration Reference](#4-configuration-reference-env)
+5. [API Summary](#5-api-summary)
+6. [Postman Collection](#6-postman-collection)
 
 ---
 
@@ -19,28 +39,27 @@ design log this project was built from.
 | Framework | Django 5.2 |
 | API | Django REST Framework 3.17 |
 | Auth | `djangorestframework-simplejwt` (access + refresh, blacklist on logout) |
-| Database | PostgreSQL 15 (Docker Compose) |
+| Database | PostgreSQL 15 (via Docker Compose) |
 | Filtering | `django-filter` + DRF `SearchFilter` / `OrderingFilter` |
 | Config | `django-environ` |
 | Testing | Django `APITestCase`, `factory_boy`, `coverage` |
-| CI | GitHub Actions (`.github/workflows/tests.yml`) |
 
 ---
 
 ## 2. Architecture
 
-Modular Django apps, one per bounded context, DRF ViewSets + Routers. RBAC is
-enforced in two layers everywhere it matters:
+The project is organized as modular Django apps, one per bounded context, with
+DRF ViewSets and Routers. RBAC is enforced in two layers everywhere it matters:
 
-1. **Permission classes** (per-app `permissions.py`, built on
-   `common/permissions.py`'s `RoleBasedCRUDPermission`) gate which HTTP
+1. **Permission classes** — each app's `permissions.py`, built on
+   `common/permissions.py`'s `RoleBasedCRUDPermission`, gates which HTTP
    actions a role may attempt.
-2. **Queryset scoping** (`common/mixins.py`'s `HierarchyScopedQuerysetMixin`,
-   applied per-ViewSet) restricts *which rows* are visible/editable — this is
-   what stops, e.g., an HQ Admin from reading another HQ's data even if they
-   guess an ID.
+2. **Queryset scoping** — `common/mixins.py`'s `HierarchyScopedQuerysetMixin`,
+   applied per ViewSet, restricts *which rows* are visible or editable. This
+   is what stops, for example, an HQ Admin from reading another HQ's data even
+   if they guess a valid ID.
 
-```
+```text
 config/          settings/{base,dev,prod,test}.py, urls.py, wsgi.py, asgi.py
 accounts/        custom User model, JWT auth views (login/refresh/logout/me)
 organizations/   Headquarters, SubHeadquarters models + CRUD
@@ -55,24 +74,28 @@ postman/         Postman collection + environment
 
 All routes are versioned under `/api/v1/`.
 
-### 2.1 Role hierarchy
+### 2.1 Role Hierarchy
 
-```
+```text
 Super Admin    → all Headquarters (global)
 HQ Admin       → one Headquarters (own HQ + its Sub HQs)
 HQ Staff       → one Headquarters (own HQ only, no Sub HQ)
-Sub HQ Staff   → one SubHeadquarters
-Medical Rep    → attached to a Headquarters OR a SubHeadquarters,
+Sub HQ Staff   → one Sub Headquarters
+Medical Rep    → attached to a Headquarters OR a Sub Headquarters,
                  further scoped to only their assigned Doctors/Visits
 ```
 
-`User.headquarters` / `User.sub_headquarters` are nullable FKs validated per
-role in `accounts/models.py` (`HQ_ADMIN`/`HQ_STAFF` require `headquarters`,
-`SUB_HQ_STAFF` requires `sub_headquarters`, `MR` requires exactly one of the
-two). `Doctor` enforces the same "exactly one parent" rule between
-`headquarters` and `sub_headquarters`.
+`User.headquarters` / `User.sub_headquarters` are nullable foreign keys,
+validated per role in `accounts/models.py`:
 
-### 2.2 RBAC matrix
+- `HQ_ADMIN` / `HQ_STAFF` require `headquarters`.
+- `SUB_HQ_STAFF` requires `sub_headquarters`.
+- `MR` requires exactly one of the two.
+
+`Doctor` enforces the same "exactly one parent" rule between `headquarters`
+and `sub_headquarters`.
+
+### 2.2 RBAC Matrix
 
 | Module | Super Admin | HQ Admin | HQ Staff | Sub HQ Staff | MR |
 |---|---|---|---|---|---|
@@ -86,17 +109,17 @@ two). `Doctor` enforces the same "exactly one parent" rule between
 
 ---
 
-## 3. Setup
+## 3. Getting Started
 
 ### 3.1 Prerequisites
 
 - Python 3.12+
 - Docker (for PostgreSQL) — or a local PostgreSQL 15 instance
 
-### 3.2 Clone & environment
+### 3.2 Clone & Environment Setup
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/vatsallolariya/Hospital-Management-Backend-API.git
 cd Hospital-Management-Backend-API
 
 python -m venv .venv
@@ -108,7 +131,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# edit .env if you want non-default DB credentials / secret key
+# edit .env if you want non-default DB credentials or a custom secret key
 ```
 
 ### 3.3 Database (Docker Compose)
@@ -118,10 +141,12 @@ docker compose up -d
 ```
 
 This starts a `postgres:15` container (`hospital_api_db`) using the
-credentials in `.env`. Django itself runs on the host, connecting via
-`POSTGRES_HOST=localhost`.
+credentials in `.env`. By default the container's `5432` is published on host
+port `5433` (to avoid clashing with a locally installed Postgres) — set
+`POSTGRES_PORT=5433` in `.env` accordingly. Django itself runs on the host and
+connects via `POSTGRES_HOST=localhost`.
 
-### 3.4 Migrate & seed
+### 3.4 Migrate & Seed
 
 ```bash
 python manage.py migrate
@@ -131,12 +156,12 @@ python manage.py seed_superadmin
 python manage.py seed_superadmin --email admin@hospital.local --password change-me
 ```
 
-`seed_superadmin` reads `SUPERADMIN_EMAIL`/`SUPERADMIN_PASSWORD` from `.env`
-by default, or accepts `--email`/`--password`/`--first-name`/`--last-name`
-flags. It's idempotent — re-running it updates the existing Super Admin
-rather than erroring.
+`seed_superadmin` reads `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` from `.env`
+by default, or accepts `--email` / `--password` / `--first-name` /
+`--last-name` flags. It's idempotent — re-running it updates the existing
+Super Admin rather than erroring.
 
-### 3.5 Run
+### 3.5 Run the Server
 
 ```bash
 python manage.py runserver
@@ -145,17 +170,17 @@ python manage.py runserver
 - API root: `http://localhost:8000/api/v1/`
 - Django admin: `http://localhost:8000/admin/`
 
-### 3.6 Run tests
+### 3.6 Run Tests
 
 ```bash
 python manage.py test --settings=config.settings.test
 ```
 
-`config/settings/test.py` swaps the password hasher to a fast MD5-based one
+`config/settings/test.py` swaps the password hasher for a fast MD5-based one
 so the suite runs in seconds instead of tens of minutes (real hashing is
-irrelevant to correctness in tests, and every seeded fixture user otherwise
-pays a real PBKDF2 hash). Always use `--settings=config.settings.test` for
-local test runs and CI.
+irrelevant to correctness in tests, and every seeded fixture user would
+otherwise pay a real PBKDF2 hash). Always use `--settings=config.settings.test`
+for local test runs.
 
 With coverage:
 
@@ -164,12 +189,9 @@ coverage run manage.py test --settings=config.settings.test --noinput
 coverage report -m
 ```
 
-CI (`.github/workflows/tests.yml`) runs the same commands against a
-Postgres 15 service container on every push/PR.
-
 ---
 
-## 4. Configuration reference (`.env`)
+## 4. Configuration Reference (`.env`)
 
 | Variable | Purpose | Default |
 |---|---|---|
@@ -177,16 +199,17 @@ Postgres 15 service container on every push/PR.
 | `POSTGRES_USER` | Database user | `hospital_api` |
 | `POSTGRES_PASSWORD` | Database password | `hospital_api` |
 | `POSTGRES_HOST` | Database host | `localhost` |
-| `POSTGRES_PORT` | Database port | `5432` |
+| `POSTGRES_PORT` | Database port | `5433` |
 | `DJANGO_SECRET_KEY` | Django secret key — set a real random value outside local dev | `change-me-in-prod` |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hosts | (empty) |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hosts | `localhost,127.0.0.1` |
 | `SUPERADMIN_EMAIL` | Used by `seed_superadmin` | `admin@hospital.local` |
 | `SUPERADMIN_PASSWORD` | Used by `seed_superadmin` | `change-me` |
 
 `.env.example` mirrors this table with placeholder (non-secret) values — copy
-it to `.env` and adjust locally. Never commit a real `.env`.
+it to `.env` and adjust locally. **Never commit a real `.env`.**
 
 Settings are split by environment:
+
 - `config/settings/dev.py` — `DEBUG=True`, used by `manage.py` locally.
 - `config/settings/prod.py` — `DEBUG=False`, enforces HTTPS/secure cookies. Set
   `DJANGO_SETTINGS_MODULE=config.settings.prod` when deploying.
@@ -197,8 +220,8 @@ Settings are split by environment:
 ## 5. API Summary
 
 All endpoints require `Authorization: Bearer <access_token>` unless noted.
-List endpoints support `?search=`, `?ordering=`, `?page=`, `?page_size=` in
-addition to the filters listed.
+List endpoints support `?search=`, `?ordering=`, `?page=`, and `?page_size=` in
+addition to the filters listed below.
 
 | Method | Endpoint | Notes |
 |---|---|---|
@@ -206,9 +229,9 @@ addition to the filters listed.
 | POST | `/api/v1/auth/refresh/` | No auth required. Exchanges `refresh` for a new `access` (+ rotated `refresh`) |
 | POST | `/api/v1/auth/logout/` | Blacklists the supplied `refresh` token |
 | GET | `/api/v1/auth/me/` | Current user's profile, role, and hierarchy scope |
-| GET/POST | `/api/v1/users/` | Super Admin or HQ Admin only. Filters: `?role=&headquarters=&sub_headquarters=&is_active=`. HQ Admin can only create/manage `HQ_STAFF`/`SUB_HQ_STAFF`/`MR` under their own Headquarters |
+| GET/POST | `/api/v1/users/` | Super Admin or HQ Admin only. Filters: `?role=&headquarters=&sub_headquarters=&is_active=`. HQ Admin can only create/manage `HQ_STAFF` / `SUB_HQ_STAFF` / `MR` under their own Headquarters |
 | GET/PUT/PATCH/DELETE | `/api/v1/users/{id}/` | `PATCH {"is_active": false}` deactivates without deleting; `DELETE` is a hard delete (cascades to an MR's Visits, same as Doctor deletion) |
-| GET/POST | `/api/v1/headquarters/` | Full CRUD, RBAC-scoped (§2.2) |
+| GET/POST | `/api/v1/headquarters/` | Full CRUD, RBAC-scoped (see [§2.2](#22-rbac-matrix)) |
 | GET/PUT/PATCH/DELETE | `/api/v1/headquarters/{id}/` | |
 | GET/POST | `/api/v1/sub-headquarters/` | Filter: `?headquarters=` |
 | GET/PUT/PATCH/DELETE | `/api/v1/sub-headquarters/{id}/` | |
@@ -216,7 +239,7 @@ addition to the filters listed.
 | GET/PUT/PATCH/DELETE | `/api/v1/doctors/{id}/` | |
 | GET/POST | `/api/v1/visits/` | Filters: `?status=&date=&doctor=&mr=` |
 | GET/PUT/PATCH/DELETE | `/api/v1/visits/{id}/` | |
-| POST | `/api/v1/visits/{id}/mark-visit/` | MR action: sets `status=COMPLETED`, stamps `check_in_time`, optionally accepts `remarks`/`purpose` |
+| POST | `/api/v1/visits/{id}/mark-visit/` | MR action: sets `status=COMPLETED`, stamps `check_in_time`, optionally accepts `remarks` / `purpose` |
 | GET | `/api/v1/dashboard/summary/` | Role-scoped counts: `total_headquarters`, `total_sub_headquarters`, `total_doctors`, `total_mrs`, `todays_visits`, `completed_visits`, `pending_visits` |
 | GET | `/api/v1/reports/visits/` | Filters: `?start_date=&end_date=&headquarters=&sub_headquarters=&mr=&doctor=&status=` |
 
@@ -229,27 +252,11 @@ Import both files from [`postman/`](postman/) into Postman:
 - `Hospital_Management_API.postman_collection.json` — every endpoint above,
   grouped by module.
 - `Hospital_Management_API.postman_environment.json` — defines `base_url`
-  (`http://localhost:8000/api/v1`), plus empty `access_token`/`refresh_token`
-  variables.
+  (`http://localhost:8000/api/v1`), plus empty `access_token` /
+  `refresh_token` variables.
 
 The **Auth → Login** request has a *Tests* script that automatically saves
 `access` and `refresh` from the response into the environment, so every other
 request (set to use `Bearer {{access_token}}`) works right after logging in.
 Log in as different seeded roles and re-run a request to see the RBAC
-scoping/403s described in §2.2.
-
----
-
-## 7. Deployment notes
-
-The app is platform-agnostic (Render / Railway / EC2 + Nginx + Gunicorn, etc).
-At minimum:
-
-1. Provision a PostgreSQL 15 instance and set `POSTGRES_*` env vars.
-2. Set `DJANGO_SECRET_KEY` to a real random value and `DJANGO_ALLOWED_HOSTS`
-   to your domain.
-3. Set `DJANGO_SETTINGS_MODULE=config.settings.prod`.
-4. Run `python manage.py migrate` and `python manage.py collectstatic`.
-5. Seed the initial Super Admin with `python manage.py seed_superadmin`.
-6. Start the app with a production WSGI server, e.g.
-   `gunicorn config.wsgi:application`.
+scoping/403s described in [§2.2](#22-rbac-matrix).
