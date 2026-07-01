@@ -1,5 +1,11 @@
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import AccessToken
 
 from accounts.models import Role, User
 from organizations.models import Headquarters, SubHeadquarters
@@ -65,3 +71,94 @@ class UserModelTests(TestCase):
         valid = User(email='mr3@example.com', role=Role.MR, headquarters=self.hq)
         valid.set_password('pass12345')
         valid.full_clean(exclude=['password'])  # should not raise
+
+
+class AuthAPITests(APITestCase):
+    PASSWORD = 'pass12345'
+
+    def setUp(self):
+        self.hq = Headquarters.objects.create(name='East HQ', code='EHQ')
+        self.sub_hq = SubHeadquarters.objects.create(headquarters=self.hq, name='East Sub', code='EHQ-S1')
+
+        self.super_admin = User.objects.create_superuser(email='super@example.com', password=self.PASSWORD)
+        self.hq_admin = User.objects.create_user(
+            email='hqadmin@example.com', password=self.PASSWORD, role=Role.HQ_ADMIN, headquarters=self.hq,
+        )
+        self.hq_staff = User.objects.create_user(
+            email='hqstaff@example.com', password=self.PASSWORD, role=Role.HQ_STAFF, headquarters=self.hq,
+        )
+        self.sub_hq_staff = User.objects.create_user(
+            email='subhqstaff@example.com', password=self.PASSWORD, role=Role.SUB_HQ_STAFF, sub_headquarters=self.sub_hq,
+        )
+        self.mr = User.objects.create_user(
+            email='mr@example.com', password=self.PASSWORD, role=Role.MR, headquarters=self.hq,
+        )
+
+    def login(self, email):
+        response = self.client.post(reverse('auth-login'), {'email': email, 'password': self.PASSWORD})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return response.data
+
+    def test_login_success_returns_access_and_refresh(self):
+        tokens = self.login('super@example.com')
+        self.assertIn('access', tokens)
+        self.assertIn('refresh', tokens)
+
+    def test_login_failure_wrong_password(self):
+        response = self.client.post(reverse('auth-login'), {'email': 'super@example.com', 'password': 'wrong'})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_login_failure_inactive_user(self):
+        self.mr.is_active = False
+        self.mr.save()
+        response = self.client.post(reverse('auth-login'), {'email': 'mr@example.com', 'password': self.PASSWORD})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_token_refresh_returns_new_access_token(self):
+        tokens = self.login('super@example.com')
+        response = self.client.post(reverse('auth-refresh'), {'refresh': tokens['refresh']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+
+    def test_logout_blacklists_refresh_token(self):
+        tokens = self.login('super@example.com')
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {tokens["access"]}')
+
+        logout_response = self.client.post(reverse('auth-logout'), {'refresh': tokens['refresh']})
+        self.assertEqual(logout_response.status_code, status.HTTP_204_NO_CONTENT)
+
+        refresh_response = self.client.post(reverse('auth-refresh'), {'refresh': tokens['refresh']})
+        self.assertEqual(refresh_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_me_requires_authentication(self):
+        response = self.client.get(reverse('auth-me'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_me_rejects_expired_access_token(self):
+        token = AccessToken.for_user(self.super_admin)
+        token.set_exp(lifetime=timedelta(seconds=-1))
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.get(reverse('auth-me'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_me_returns_correct_role_and_scope_per_role(self):
+        cases = [
+            (self.super_admin, Role.SUPER_ADMIN, None, None),
+            (self.hq_admin, Role.HQ_ADMIN, self.hq.id, None),
+            (self.hq_staff, Role.HQ_STAFF, self.hq.id, None),
+            (self.sub_hq_staff, Role.SUB_HQ_STAFF, None, self.sub_hq.id),
+            (self.mr, Role.MR, self.hq.id, None),
+        ]
+        for user, expected_role, expected_hq, expected_sub_hq in cases:
+            tokens = self.login(user.email)
+            self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {tokens["access"]}')
+
+            response = self.client.get(reverse('auth-me'))
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data['email'], user.email)
+            self.assertEqual(response.data['role'], expected_role)
+            self.assertEqual(response.data['headquarters'], expected_hq)
+            self.assertEqual(response.data['sub_headquarters'], expected_sub_hq)
+
+            self.client.credentials()
