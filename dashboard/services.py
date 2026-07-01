@@ -59,10 +59,8 @@ def _visits_for_user(user):
 
 def get_dashboard_summary(user):
     """
-    Per Appendix A: 7 metrics, scoped to the requesting user's role/hierarchy
-    position. Headquarters/Sub Headquarters counts follow the "own HQ" scoping
-    used in organizations/views.py; Doctors/MRs/Visits follow the HQ-or-its-
-    Sub-HQs scoping used in doctors/views.py and visits/views.py.
+    Returns the dashboard summary metrics, scoped to the requesting user's
+    role and position in the hierarchy.
     """
     if user.role == Role.SUPER_ADMIN:
         total_headquarters = Headquarters.objects.count()

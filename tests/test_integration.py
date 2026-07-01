@@ -1,10 +1,7 @@
 """
-Cross-module integration tests: exercise the full lifecycle through
-the real API end to end, rather than each module in isolation. There is no
-`/api/v1/users/` endpoint yet, so provisioning HQ Admin/MR accounts happens directly via the ORM
-(`common.factories`), the same way `seed_superadmin` provisions the initial
-Super Admin — everything downstream (HQ/Sub HQ/Doctor/Visit creation,
-dashboard, reports) goes through the real HTTP API.
+Cross-module integration tests: exercise the full lifecycle through the real
+API end to end. HQ Admin and MR accounts are provisioned directly via the ORM
+(`common.factories`); everything else goes through the HTTP API.
 """
 from django.urls import reverse
 from rest_framework import status
@@ -31,7 +28,7 @@ class FullLifecycleTests(APITestCase):
         self.assertEqual(hq_response.status_code, status.HTTP_201_CREATED)
         hq_id = hq_response.data['id']
 
-        # 2. Provision an HQ Admin for that HQ (no user-management endpoint yet).
+        # 2. Provision an HQ Admin for that HQ.
         hq = Headquarters.objects.get(pk=hq_id)
         hq_admin = HQAdminFactory(password=self.PASSWORD, headquarters=hq)
 

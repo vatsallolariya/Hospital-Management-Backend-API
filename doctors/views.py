@@ -17,7 +17,7 @@ class DoctorViewSet(HierarchyScopedQuerysetMixin, AuditLogMixin, viewsets.ModelV
     ordering = ['name']
 
     def scope_queryset_to_mr(self, qs, user):
-        """MR sees only their own assigned Doctors, not the whole HQ/Sub HQ (per §4)."""
+        """MR sees only their own assigned Doctors."""
         return qs.filter(assigned_mr_id=user.id)
 
     def perform_create(self, serializer):

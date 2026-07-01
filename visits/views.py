@@ -31,7 +31,7 @@ class VisitViewSet(HierarchyScopedQuerysetMixin, AuditLogMixin, viewsets.ModelVi
     ordering = ['-visit_date']
 
     def scope_queryset_to_mr(self, qs, user):
-        """MR sees only their own Visits, not the whole HQ/Sub HQ (per §4)."""
+        """MR sees only their own Visits."""
         return qs.filter(mr_id=user.id)
 
     def perform_create(self, serializer):

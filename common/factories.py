@@ -1,11 +1,6 @@
 """
-Shared factory_boy factories for building the HQ -> SubHQ -> User(s) ->
-Doctor -> Visit hierarchy in tests. Used by tests/test_integration.py,
-tests/test_permission_matrix.py and tests/test_edge_cases.py.
-
-Existing per-app tests.py files hand-roll their own fixtures and are left
-as-is (already passing, no behavior change) — these factories are only for
-the new test modules.
+Shared factory_boy factories for building the HQ -> Sub HQ -> User ->
+Doctor -> Visit hierarchy in tests.
 """
 from django.utils import timezone
 import factory
@@ -36,11 +31,8 @@ class SubHeadquartersFactory(DjangoModelFactory):
 
 class UserFactory(DjangoModelFactory):
     """
-    Base MR factory. Goes through `User.objects.create_user` (rather than
-    factory_boy's default `.create()`) so passwords are hashed via
-    `set_password` and role/scope validation in `User.clean()` runs, same as
-    application code. Use the per-role subclasses below — each role has
-    different required scope fields.
+    Base MR factory. Uses `User.objects.create_user` so passwords are hashed
+    and role/scope validation runs. Use the per-role subclasses below.
     """
     class Meta:
         model = User

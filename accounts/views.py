@@ -60,10 +60,8 @@ class MeView(RetrieveAPIView):
 
 class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
     """
-    Per §4: Super Admin manages all users; HQ Admin manages HQ Staff, Sub HQ
-    Staff, and MR accounts under their own Headquarters. No other role has a
-    "manage users" duty, so the queryset/permission scoping below only ever
-    needs to account for these two roles (see UserPermission).
+    Manage user accounts. Super Admin manages all users; HQ Admin manages
+    HQ Staff, Sub HQ Staff, and MR accounts under their own Headquarters.
     """
     queryset = User.objects.select_related('headquarters', 'sub_headquarters', 'created_by').all()
     serializer_class = UserSerializer

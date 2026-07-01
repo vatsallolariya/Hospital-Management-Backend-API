@@ -26,9 +26,8 @@ class VisitReportFilterSet(django_filters.FilterSet):
 
 class VisitReportView(HierarchyScopedQuerysetMixin, AuditLogMixin, generics.ListAPIView):
     """
-    Per §5/§4: read-only, filtered/paginated/sortable report over Visits,
-    scoped to the requesting user's role/hierarchy position (same scoping as
-    VisitViewSet in visits/views.py).
+    Read-only, filterable and sortable report over Visits, scoped to the
+    requesting user's role.
     """
     queryset = Visit.objects.select_related('doctor', 'mr').all()
     serializer_class = VisitSerializer

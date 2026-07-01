@@ -1,10 +1,6 @@
 """
-Full RBAC permission-matrix sweep: every role x every resource x
-every verb. Existing
-per-app tests.py files already spot-check individual RBAC rules; this module
-is the single, exhaustive, table-driven cross-check — a regression test for
-the permission *gate* (allowed vs 403), not the queryset-scoping correctness
-already covered elsewhere.
+Full RBAC permission-matrix sweep: every role against every resource and
+verb, checking the permission gate (allowed vs 403).
 """
 from django.urls import reverse
 from rest_framework import status
@@ -284,7 +280,7 @@ class UserMatrixTests(PermissionMatrixBase):
 
 
 class DashboardReportsMatrixTests(PermissionMatrixBase):
-    """Dashboard/Reports are read-only, IsAuthenticated-only — every role gets 200 (scoped values)."""
+    """Dashboard and Reports are read-only for any authenticated role."""
 
     def test_dashboard_summary_allowed_for_every_role(self):
         for role in ALL_ROLES:

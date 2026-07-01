@@ -107,6 +107,14 @@ and `sub_headquarters`.
 | Dashboard | Global counts | HQ-scoped counts | HQ-scoped counts | Sub HQ-scoped counts | Self-scoped |
 | Reports | All, any filter | Filtered to own HQ | Filtered to own HQ | Filtered to own Sub HQ | Filtered to self |
 
+> **Hierarchy inheritance.** Per the spec's "hierarchy-based role permissions",
+> a higher role inherits the capabilities of the roles beneath it, scoped to
+> its own part of the hierarchy. This is why **HQ Admin** — although the roles
+> list names it as managing HQ Staff, Sub HQs and users — also has write access
+> to Doctors and Visits within its own HQ: those are capabilities of the HQ
+> Staff sitting below it. Row-level access is always constrained to the user's
+> own HQ / Sub HQ by the queryset-scoping layer.
+
 ---
 
 ## 3. Getting Started

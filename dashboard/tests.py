@@ -1,6 +1,7 @@
-from datetime import date, timedelta
+from datetime import timedelta
 
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -43,7 +44,7 @@ class DashboardSummaryTests(APITestCase):
         self.doc_hq1_sub = Doctor.objects.create(name='Dr. Hq1Sub', sub_headquarters=self.hq1_sub, assigned_mr=self.mr_hq1_sub)
         self.doc_hq2 = Doctor.objects.create(name='Dr. Hq2', headquarters=self.hq2, assigned_mr=self.mr_hq2)
 
-        today = date.today()
+        today = timezone.localdate()
         yesterday = today - timedelta(days=1)
 
         # Today's visits, split PENDING/COMPLETED, across hq1 (direct), hq1_sub, and hq2.

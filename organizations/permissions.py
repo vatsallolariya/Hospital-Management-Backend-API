@@ -3,16 +3,15 @@ from common.permissions import RoleBasedCRUDPermission
 
 
 class HeadquartersPermission(RoleBasedCRUDPermission):
-    """Per §4: Super Admin full CRUD; HQ Admin/HQ Staff read own only."""
+    """Super Admin has full CRUD; HQ Admin and HQ Staff can read their own."""
     read_roles = (Role.SUPER_ADMIN, Role.HQ_ADMIN, Role.HQ_STAFF)
     write_roles = (Role.SUPER_ADMIN,)
 
 
 class SubHeadquartersPermission(RoleBasedCRUDPermission):
     """
-    Per §4: Super Admin full CRUD (all); HQ Admin full CRUD (own HQ, enforced
-    via queryset scoping + serializer validation); HQ Staff/Sub HQ Staff read
-    only within their scope.
+    Super Admin has full CRUD; HQ Admin has full CRUD within their own
+    Headquarters; HQ Staff and Sub HQ Staff can read within their scope.
     """
     read_roles = (Role.SUPER_ADMIN, Role.HQ_ADMIN, Role.HQ_STAFF, Role.SUB_HQ_STAFF)
     write_roles = (Role.SUPER_ADMIN, Role.HQ_ADMIN)

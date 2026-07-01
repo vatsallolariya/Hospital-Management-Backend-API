@@ -1,7 +1,6 @@
 """
 Edge cases: invalid filter values, empty result sets, pagination
-boundaries, and expired/malformed JWTs against endpoints outside `accounts`
-(accounts/tests.py already covers this for /auth/me/).
+boundaries, and expired or malformed JWTs.
 """
 from datetime import timedelta
 
@@ -31,11 +30,7 @@ class EdgeCaseBase(APITestCase):
 
 
 class InvalidFilterTests(EdgeCaseBase):
-    """
-    django-filter rejects invalid filter values with a 400 (not a silent
-    empty result or a 500) — verified against the running FilterSets, this
-    is the safer behavior so it's what's asserted here.
-    """
+    """Invalid filter values return a 400, not an empty result or a 500."""
     def test_invalid_visit_status_filter_returns_400(self):
         self.login_as(self.super_admin)
         response = self.client.get(reverse('visit-list'), {'status': 'BOGUS'})

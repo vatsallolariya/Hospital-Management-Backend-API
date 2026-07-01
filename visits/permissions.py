@@ -5,12 +5,13 @@ from accounts.models import Role
 
 class VisitPermission(BasePermission):
     """
-    Per §4: Super Admin has full CRUD (all); HQ Staff/Sub HQ Staff have full
-    CRUD within their own HQ/Sub HQ; HQ Admin can read and manage (update,
-    including mark-visit) within their own HQ but not create/delete; MR can
-    create/update only their own visits (mark-visit, submit report), never
-    delete. Queryset scoping restricts *which* rows are visible/editable —
-    this class only gates the action.
+    Super Admin, HQ Staff, and Sub HQ Staff have full CRUD; HQ Admin can read
+    and update but not create or delete; MR can create and update their own
+    visits but not delete.
+
+    HQ Admin's access follows the "hierarchy-based role permissions" model in
+    the spec: a role inherits the capabilities of the roles beneath it, scoped
+    to its own HQ.
     """
     read_roles = (Role.SUPER_ADMIN, Role.HQ_ADMIN, Role.HQ_STAFF, Role.SUB_HQ_STAFF, Role.MR)
     create_roles = (Role.SUPER_ADMIN, Role.HQ_STAFF, Role.SUB_HQ_STAFF, Role.MR)

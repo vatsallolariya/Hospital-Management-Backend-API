@@ -5,8 +5,7 @@ from .models import Role, User
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Adds role/scope claims to the access token so API consumers don't need
-    a separate call just to know what a token can do."""
+    """Adds role and scope claims to the access token."""
 
     @classmethod
     def get_token(cls, user):
@@ -32,9 +31,8 @@ class MeSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """
-    Create/manage User accounts. Only reachable by Super Admin and HQ Admin
-    (see accounts.permissions.UserPermission) — HQ Admin is further
-    restricted here to subordinate roles under their own Headquarters.
+    Create and update user accounts. HQ Admin is limited to HQ Staff, Sub HQ
+    Staff, and MR accounts under their own Headquarters.
     """
     password = serializers.CharField(write_only=True, required=False, min_length=8)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
