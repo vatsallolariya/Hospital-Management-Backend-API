@@ -1,11 +1,11 @@
 """
 Shared factory_boy factories for building the HQ -> SubHQ -> User(s) ->
 Doctor -> Visit hierarchy in tests. Used by tests/test_integration.py,
-tests/test_permission_matrix.py and tests/test_edge_cases.py (Phase 7).
+tests/test_permission_matrix.py and tests/test_edge_cases.py.
 
 Existing per-app tests.py files hand-roll their own fixtures and are left
 as-is (already passing, no behavior change) — these factories are only for
-the new Phase 7 test modules.
+the new test modules.
 """
 from django.utils import timezone
 import factory

@@ -1,8 +1,7 @@
 """
-Cross-module integration tests (Phase 7): exercise the full lifecycle through
+Cross-module integration tests: exercise the full lifecycle through
 the real API end to end, rather than each module in isolation. There is no
-`/api/v1/users/` endpoint yet (deferred, see IMPLEMENTATION_PLAN.md Phase 2
-status), so provisioning HQ Admin/MR accounts happens directly via the ORM
+`/api/v1/users/` endpoint yet, so provisioning HQ Admin/MR accounts happens directly via the ORM
 (`common.factories`), the same way `seed_superadmin` provisions the initial
 Super Admin — everything downstream (HQ/Sub HQ/Doctor/Visit creation,
 dashboard, reports) goes through the real HTTP API.

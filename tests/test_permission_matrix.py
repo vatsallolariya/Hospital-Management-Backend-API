@@ -1,6 +1,6 @@
 """
-Full RBAC permission-matrix sweep (Phase 7): every role x every resource x
-every verb, checked against the §4 table in IMPLEMENTATION_PLAN.md. Existing
+Full RBAC permission-matrix sweep: every role x every resource x
+every verb. Existing
 per-app tests.py files already spot-check individual RBAC rules; this module
 is the single, exhaustive, table-driven cross-check — a regression test for
 the permission *gate* (allowed vs 403), not the queryset-scoping correctness

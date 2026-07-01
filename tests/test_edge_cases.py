@@ -1,5 +1,5 @@
 """
-Edge cases (Phase 7): invalid filter values, empty result sets, pagination
+Edge cases: invalid filter values, empty result sets, pagination
 boundaries, and expired/malformed JWTs against endpoints outside `accounts`
 (accounts/tests.py already covers this for /auth/me/).
 """
