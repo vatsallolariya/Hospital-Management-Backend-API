@@ -1,0 +1,548 @@
+{
+  "info": {
+    "name": "Hospital Management API",
+    "description": "Hospital Management Backend API — JWT auth, 5-level RBAC hierarchy (Super Admin / HQ Admin / HQ Staff / Sub HQ Staff / MR), Headquarters/Sub Headquarters/Doctor/Visit CRUD, dashboard summary, and filtered visit reports. See README.md for setup. Log in via Auth > Login first — the Tests script on that request auto-saves access_token/refresh_token into this environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{access_token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api/v1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.access) { pm.environment.set('access_token', res.access); }",
+                  "if (res.refresh) { pm.environment.set('refresh_token', res.refresh); }",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@hospital.local\",\n  \"password\": \"change-me\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "auth", "login", "" ]
+            },
+            "description": "No auth required. Returns access + refresh JWTs; access token embeds role/headquarters_id/sub_headquarters_id claims. Swap the body for each seeded role to demonstrate RBAC scoping across the rest of the collection."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.access) { pm.environment.set('access_token', res.access); }",
+                  "if (res.refresh) { pm.environment.set('refresh_token', res.refresh); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "auth", "refresh", "" ]
+            },
+            "description": "Exchanges refresh token for a new access token (refresh is rotated + old one blacklisted, per SIMPLE_JWT settings)."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/logout/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "auth", "logout", "" ]
+            },
+            "description": "Blacklists the supplied refresh token."
+          }
+        },
+        {
+          "name": "Me (current user profile)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/auth/me/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "auth", "me", "" ]
+            },
+            "description": "Returns the current user's profile, role, and hierarchy scope."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Headquarters",
+      "item": [
+        {
+          "name": "List Headquarters",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/headquarters/?search=&ordering=name&page=1&page_size=20",
+              "host": [ "{{base_url}}" ],
+              "path": [ "headquarters", "" ],
+              "query": [
+                { "key": "search", "value": "" },
+                { "key": "ordering", "value": "name" },
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Headquarters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.environment.set('headquarters_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"North Zone HQ\",\n  \"code\": \"NZ01\",\n  \"address\": \"123 Main St\",\n  \"city\": \"Metropolis\",\n  \"state\": \"State\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/headquarters/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "headquarters", "" ]
+            },
+            "description": "Super Admin only. Other roles should receive a 403."
+          }
+        },
+        {
+          "name": "Retrieve Headquarters",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/headquarters/{{headquarters_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "headquarters", "{{headquarters_id}}", "" ]
+            }
+          }
+        },
+        {
+          "name": "Update Headquarters (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"New Metropolis\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/headquarters/{{headquarters_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "headquarters", "{{headquarters_id}}", "" ]
+            }
+          }
+        },
+        {
+          "name": "Delete Headquarters",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/headquarters/{{headquarters_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "headquarters", "{{headquarters_id}}", "" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sub Headquarters",
+      "item": [
+        {
+          "name": "List Sub Headquarters",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/sub-headquarters/?headquarters={{headquarters_id}}&search=&ordering=name&page=1",
+              "host": [ "{{base_url}}" ],
+              "path": [ "sub-headquarters", "" ],
+              "query": [
+                { "key": "headquarters", "value": "{{headquarters_id}}" },
+                { "key": "search", "value": "" },
+                { "key": "ordering", "value": "name" },
+                { "key": "page", "value": "1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Sub Headquarters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.environment.set('sub_headquarters_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"headquarters\": {{headquarters_id}},\n  \"name\": \"East Wing Sub HQ\",\n  \"code\": \"EW01\",\n  \"address\": \"456 Side St\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sub-headquarters/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "sub-headquarters", "" ]
+            },
+            "description": "Super Admin (any HQ) or HQ Admin (own HQ only)."
+          }
+        },
+        {
+          "name": "Retrieve Sub Headquarters",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/sub-headquarters/{{sub_headquarters_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "sub-headquarters", "{{sub_headquarters_id}}", "" ]
+            }
+          }
+        },
+        {
+          "name": "Update Sub Headquarters (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"789 Updated Ave\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sub-headquarters/{{sub_headquarters_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "sub-headquarters", "{{sub_headquarters_id}}", "" ]
+            }
+          }
+        },
+        {
+          "name": "Delete Sub Headquarters",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/sub-headquarters/{{sub_headquarters_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "sub-headquarters", "{{sub_headquarters_id}}", "" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctors",
+      "item": [
+        {
+          "name": "List Doctors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/doctors/?headquarters=&sub_headquarters=&assigned_mr=&search=&ordering=name&page=1",
+              "host": [ "{{base_url}}" ],
+              "path": [ "doctors", "" ],
+              "query": [
+                { "key": "headquarters", "value": "" },
+                { "key": "sub_headquarters", "value": "" },
+                { "key": "assigned_mr", "value": "" },
+                { "key": "search", "value": "" },
+                { "key": "ordering", "value": "name" },
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "MRs see only their own assigned Doctors regardless of these filters."
+          }
+        },
+        {
+          "name": "Create Doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.environment.set('doctor_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Jane Doe\",\n  \"specialization\": \"Cardiology\",\n  \"phone\": \"9999999999\",\n  \"email\": \"jane.doe@clinic.example\",\n  \"clinic_name\": \"City Clinic\",\n  \"address\": \"12 Health Rd\",\n  \"headquarters\": {{headquarters_id}},\n  \"sub_headquarters\": null,\n  \"assigned_mr\": null,\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/doctors/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "doctors", "" ]
+            },
+            "description": "Exactly one of headquarters/sub_headquarters must be set. MR is read-only for this resource (expect 403)."
+          }
+        },
+        {
+          "name": "Retrieve Doctor",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "doctors", "{{doctor_id}}", "" ]
+            }
+          }
+        },
+        {
+          "name": "Update Doctor (PATCH, assign MR)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assigned_mr\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "doctors", "{{doctor_id}}", "" ]
+            },
+            "description": "assigned_mr must be a user with role MR belonging to the same Headquarters/Sub Headquarters as the Doctor."
+          }
+        },
+        {
+          "name": "Delete Doctor",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "doctors", "{{doctor_id}}", "" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Visits",
+      "item": [
+        {
+          "name": "List Visits",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/visits/?status=&date=&doctor=&mr=&search=&ordering=-visit_date&page=1",
+              "host": [ "{{base_url}}" ],
+              "path": [ "visits", "" ],
+              "query": [
+                { "key": "status", "value": "" },
+                { "key": "date", "value": "" },
+                { "key": "doctor", "value": "" },
+                { "key": "mr", "value": "" },
+                { "key": "search", "value": "" },
+                { "key": "ordering", "value": "-visit_date" },
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "MRs see only their own Visits regardless of these filters."
+          }
+        },
+        {
+          "name": "Create Visit (MR)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.environment.set('visit_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor\": {{doctor_id}},\n  \"visit_date\": \"2026-07-01\",\n  \"status\": \"PENDING\",\n  \"purpose\": \"Routine follow-up\",\n  \"remarks\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/visits/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "visits", "" ]
+            },
+            "description": "As MR: mr is forced server-side to the requesting user (any client-supplied mr is ignored) and doctor must be the MR's own assigned doctor."
+          }
+        },
+        {
+          "name": "Retrieve Visit",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/visits/{{visit_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "visits", "{{visit_id}}", "" ]
+            }
+          }
+        },
+        {
+          "name": "Update Visit (PATCH remarks/purpose)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purpose\": \"Updated purpose\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/visits/{{visit_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "visits", "{{visit_id}}", "" ]
+            },
+            "description": "Direct PATCH cannot jump status PENDING -> COMPLETED; use Mark Visit for that."
+          }
+        },
+        {
+          "name": "Mark Visit Complete",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"remarks\": \"Visit completed, doctor briefed on new product.\",\n  \"purpose\": \"Product briefing\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/visits/{{visit_id}}/mark-visit/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "visits", "{{visit_id}}", "mark-visit", "" ]
+            },
+            "description": "MR action. Sets status=COMPLETED and stamps check_in_time; only valid while status is PENDING."
+          }
+        },
+        {
+          "name": "Delete Visit",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/visits/{{visit_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "visits", "{{visit_id}}", "" ]
+            },
+            "description": "MR and HQ Admin cannot delete visits (expect 403 for those roles)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/dashboard/summary/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "dashboard", "summary", "" ]
+            },
+            "description": "Returns total_headquarters, total_sub_headquarters, total_doctors, total_mrs, todays_visits, completed_visits, pending_visits — all scoped to the requesting user's role/hierarchy position. Log in as different roles to see the counts differ."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Visit Report (filtered)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/reports/visits/?start_date=&end_date=&headquarters=&sub_headquarters=&mr=&doctor=&status=&search=&ordering=-visit_date&page=1",
+              "host": [ "{{base_url}}" ],
+              "path": [ "reports", "visits", "" ],
+              "query": [
+                { "key": "start_date", "value": "" },
+                { "key": "end_date", "value": "" },
+                { "key": "headquarters", "value": "" },
+                { "key": "sub_headquarters", "value": "" },
+                { "key": "mr", "value": "" },
+                { "key": "doctor", "value": "" },
+                { "key": "status", "value": "" },
+                { "key": "search", "value": "" },
+                { "key": "ordering", "value": "-visit_date" },
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "Read-only, filtered/paginated/sortable Visit report, scoped to the requesting user's role/hierarchy position (same scoping as Visits list)."
+          }
+        }
+      ]
+    }
+  ]
+}
