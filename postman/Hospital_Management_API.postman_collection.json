@@ -112,6 +112,101 @@
       ]
     },
     {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/?role=&headquarters=&sub_headquarters=&search=&ordering=email&page=1",
+              "host": [ "{{base_url}}" ],
+              "path": [ "users", "" ],
+              "query": [
+                { "key": "role", "value": "" },
+                { "key": "headquarters", "value": "" },
+                { "key": "sub_headquarters", "value": "" },
+                { "key": "search", "value": "" },
+                { "key": "ordering", "value": "email" },
+                { "key": "page", "value": "1" }
+              ]
+            },
+            "description": "Super Admin or HQ Admin only (expect 403 for other roles). HQ Admin sees only HQ Staff/Sub HQ Staff/MR under their own Headquarters."
+          }
+        },
+        {
+          "name": "Create User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.environment.set('user_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new.staff@hospital.local\",\n  \"password\": \"change-me-123\",\n  \"first_name\": \"New\",\n  \"last_name\": \"Staff\",\n  \"role\": \"HQ_STAFF\",\n  \"headquarters\": {{headquarters_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "users", "" ]
+            },
+            "description": "Super Admin can create any role/scope. HQ Admin can only create HQ_STAFF/SUB_HQ_STAFF/MR under their own Headquarters (expect 400 otherwise)."
+          }
+        },
+        {
+          "name": "Retrieve User",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "users", "{{user_id}}", "" ]
+            }
+          }
+        },
+        {
+          "name": "Update User (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9998887777\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "users", "{{user_id}}", "" ]
+            },
+            "description": "Send {\"is_active\": false} here to deactivate an account without deleting it."
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "users", "{{user_id}}", "" ]
+            },
+            "description": "Hard delete. If this is an MR with existing Visits, their Visit history is cascade-deleted too — prefer PATCH is_active=false unless that's intended."
+          }
+        }
+      ]
+    },
+    {
       "name": "Headquarters",
       "item": [
         {

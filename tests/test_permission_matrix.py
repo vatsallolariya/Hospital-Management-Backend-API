@@ -241,6 +241,48 @@ class VisitMatrixTests(PermissionMatrixBase):
                 self.assert_role_status(role, 'delete', url, role in self.DELETE_ROLES)
 
 
+class UserMatrixTests(PermissionMatrixBase):
+    READ_ROLES = {Role.SUPER_ADMIN, Role.HQ_ADMIN}
+    WRITE_ROLES = {Role.SUPER_ADMIN, Role.HQ_ADMIN}
+
+    def setUp(self):
+        super().setUp()
+        self.hq_staff_target = HQStaffFactory(headquarters=self.hq)
+
+    def test_list(self):
+        for role in ALL_ROLES:
+            with self.subTest(role=role):
+                self.assert_role_status(role, 'get', reverse('user-list'), role in self.READ_ROLES)
+
+    def test_retrieve(self):
+        url = reverse('user-detail', args=[self.hq_staff_target.id])
+        for role in ALL_ROLES:
+            with self.subTest(role=role):
+                self.assert_role_status(role, 'get', url, role in self.READ_ROLES)
+
+    def test_create(self):
+        for role in ALL_ROLES:
+            with self.subTest(role=role):
+                payload = {
+                    'email': f'new-{role}@example.com', 'password': 'pass12345',
+                    'role': Role.HQ_STAFF, 'headquarters': self.hq.id,
+                }
+                self.assert_role_status(role, 'post', reverse('user-list'), role in self.WRITE_ROLES, payload)
+
+    def test_update(self):
+        url = reverse('user-detail', args=[self.hq_staff_target.id])
+        for role in ALL_ROLES:
+            with self.subTest(role=role):
+                self.assert_role_status(role, 'patch', url, role in self.WRITE_ROLES, {'phone': '5550000'})
+
+    def test_delete(self):
+        for role in ALL_ROLES:
+            with self.subTest(role=role):
+                target = HQStaffFactory(headquarters=self.hq) if role in self.WRITE_ROLES else self.hq_staff_target
+                url = reverse('user-detail', args=[target.id])
+                self.assert_role_status(role, 'delete', url, role in self.WRITE_ROLES)
+
+
 class DashboardReportsMatrixTests(PermissionMatrixBase):
     """Dashboard/Reports are read-only, IsAuthenticated-only — every role gets 200 (scoped values)."""
 

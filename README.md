@@ -76,6 +76,7 @@ two). `Doctor` enforces the same "exactly one parent" rule between
 
 | Module | Super Admin | HQ Admin | HQ Staff | Sub HQ Staff | MR |
 |---|---|---|---|---|---|
+| Users | Full CRUD (all) | Full CRUD (HQ Staff/Sub HQ Staff/MR, own HQ) | — | — | — |
 | Headquarters | Full CRUD (all) | Read own | Read own | — | — |
 | Sub Headquarters | Full CRUD (all) | Full CRUD (own HQ) | Read (own HQ) | Read own | — |
 | Doctors | Full CRUD (all) | Full CRUD (own HQ) | Full CRUD (own HQ) | Full CRUD (own Sub HQ) | Read own assigned only |
@@ -205,6 +206,8 @@ addition to the filters listed.
 | POST | `/api/v1/auth/refresh/` | No auth required. Exchanges `refresh` for a new `access` (+ rotated `refresh`) |
 | POST | `/api/v1/auth/logout/` | Blacklists the supplied `refresh` token |
 | GET | `/api/v1/auth/me/` | Current user's profile, role, and hierarchy scope |
+| GET/POST | `/api/v1/users/` | Super Admin or HQ Admin only. Filters: `?role=&headquarters=&sub_headquarters=&is_active=`. HQ Admin can only create/manage `HQ_STAFF`/`SUB_HQ_STAFF`/`MR` under their own Headquarters |
+| GET/PUT/PATCH/DELETE | `/api/v1/users/{id}/` | `PATCH {"is_active": false}` deactivates without deleting; `DELETE` is a hard delete (cascades to an MR's Visits, same as Doctor deletion) |
 | GET/POST | `/api/v1/headquarters/` | Full CRUD, RBAC-scoped (§2.2) |
 | GET/PUT/PATCH/DELETE | `/api/v1/headquarters/{id}/` | |
 | GET/POST | `/api/v1/sub-headquarters/` | Filter: `?headquarters=` |
@@ -216,11 +219,6 @@ addition to the filters listed.
 | POST | `/api/v1/visits/{id}/mark-visit/` | MR action: sets `status=COMPLETED`, stamps `check_in_time`, optionally accepts `remarks`/`purpose` |
 | GET | `/api/v1/dashboard/summary/` | Role-scoped counts: `total_headquarters`, `total_sub_headquarters`, `total_doctors`, `total_mrs`, `todays_visits`, `completed_visits`, `pending_visits` |
 | GET | `/api/v1/reports/visits/` | Filters: `?start_date=&end_date=&headquarters=&sub_headquarters=&mr=&doctor=&status=` |
-
-> **Note:** a `/api/v1/users/` endpoint for scoped user provisioning was scoped
-> in the original design (see IMPLEMENTATION_PLAN_1.md §5) but intentionally
-> deferred — out of scope for this submission. Users are currently created via
-> Django admin or `seed_superadmin`.
 
 ---
 

@@ -162,3 +162,80 @@ class AuthAPITests(APITestCase):
             self.assertEqual(response.data['sub_headquarters'], expected_sub_hq)
 
             self.client.credentials()
+
+
+class UserAPITests(APITestCase):
+    PASSWORD = 'pass12345'
+
+    def setUp(self):
+        self.hq = Headquarters.objects.create(name='West HQ', code='WHQ')
+        self.other_hq = Headquarters.objects.create(name='Other HQ', code='OHQ')
+        self.sub_hq = SubHeadquarters.objects.create(headquarters=self.hq, name='West Sub', code='WHQ-S1')
+
+        self.super_admin = User.objects.create_superuser(email='super2@example.com', password=self.PASSWORD)
+        self.hq_admin = User.objects.create_user(
+            email='hqadmin2@example.com', password=self.PASSWORD, role=Role.HQ_ADMIN, headquarters=self.hq,
+        )
+        self.hq_staff = User.objects.create_user(
+            email='hqstaff2@example.com', password=self.PASSWORD, role=Role.HQ_STAFF, headquarters=self.hq,
+        )
+
+    def login(self, email):
+        response = self.client.post(reverse('auth-login'), {'email': email, 'password': self.PASSWORD})
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {response.data["access"]}')
+
+    def test_hq_admin_can_create_hq_staff_under_own_hq(self):
+        self.login('hqadmin2@example.com')
+        response = self.client.post(reverse('user-list'), {
+            'email': 'newstaff@example.com', 'password': 'pass12345',
+            'role': Role.HQ_STAFF, 'headquarters': self.hq.id,
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn('password', response.data)
+        created = User.objects.get(email='newstaff@example.com')
+        self.assertTrue(created.check_password('pass12345'))
+        self.assertEqual(created.created_by, self.hq_admin)
+
+    def test_hq_admin_cannot_create_user_under_other_hq(self):
+        self.login('hqadmin2@example.com')
+        response = self.client.post(reverse('user-list'), {
+            'email': 'newstaff2@example.com', 'password': 'pass12345',
+            'role': Role.HQ_STAFF, 'headquarters': self.other_hq.id,
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_hq_admin_cannot_create_super_admin(self):
+        self.login('hqadmin2@example.com')
+        response = self.client.post(reverse('user-list'), {
+            'email': 'escalate1@example.com', 'password': 'pass12345', 'role': Role.SUPER_ADMIN,
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_hq_admin_cannot_create_hq_admin(self):
+        self.login('hqadmin2@example.com')
+        response = self.client.post(reverse('user-list'), {
+            'email': 'escalate2@example.com', 'password': 'pass12345', 'role': Role.HQ_ADMIN,
+            'headquarters': self.hq.id,
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_super_admin_can_create_any_role(self):
+        self.login('super2@example.com')
+        response = self.client.post(reverse('user-list'), {
+            'email': 'newadmin@example.com', 'password': 'pass12345',
+            'role': Role.HQ_ADMIN, 'headquarters': self.other_hq.id,
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_invalid_role_org_combo_returns_400_not_500(self):
+        self.login('super2@example.com')
+        response = self.client.post(reverse('user-list'), {
+            'email': 'badcombo@example.com', 'password': 'pass12345',
+            'role': Role.MR, 'headquarters': self.hq.id, 'sub_headquarters': self.sub_hq.id,
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_hq_staff_cannot_access_user_endpoint(self):
+        self.login('hqstaff2@example.com')
+        response = self.client.get(reverse('user-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
