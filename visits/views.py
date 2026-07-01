@@ -1,3 +1,53 @@
-from django.shortcuts import render
+import django_filters
+from django.utils import timezone
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
-# Create your views here.
+from common.mixins import HierarchyScopedQuerysetMixin
+
+from .models import Visit, VisitStatus
+from .permissions import VisitPermission
+from .serializers import VisitSerializer
+
+
+class VisitFilterSet(django_filters.FilterSet):
+    date = django_filters.DateFilter(field_name='visit_date')
+
+    class Meta:
+        model = Visit
+        fields = ['status', 'doctor', 'mr', 'date']
+
+
+class VisitViewSet(HierarchyScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = Visit.objects.select_related('doctor', 'mr').all()
+    serializer_class = VisitSerializer
+    permission_classes = [VisitPermission]
+    hq_lookup_field = 'doctor__headquarters'
+    sub_hq_lookup_field = 'doctor__sub_headquarters'
+    filterset_class = VisitFilterSet
+    search_fields = ['doctor__name', 'mr__email', 'purpose', 'remarks']
+    ordering_fields = ['visit_date', 'created_at']
+    ordering = ['-visit_date']
+
+    def scope_queryset_to_mr(self, qs, user):
+        """MR sees only their own Visits, not the whole HQ/Sub HQ (per §4)."""
+        return qs.filter(mr_id=user.id)
+
+    @action(detail=True, methods=['post'], url_path='mark-visit')
+    def mark_visit(self, request, pk=None):
+        visit = self.get_object()
+        if visit.status != VisitStatus.PENDING:
+            return Response(
+                {'detail': f'Cannot mark a {visit.status.lower()} visit as completed.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        visit.status = VisitStatus.COMPLETED
+        visit.check_in_time = timezone.now()
+        if 'remarks' in request.data:
+            visit.remarks = request.data['remarks']
+        if 'purpose' in request.data:
+            visit.purpose = request.data['purpose']
+        visit.save()
+        return Response(self.get_serializer(visit).data)
