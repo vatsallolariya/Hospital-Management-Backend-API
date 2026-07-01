@@ -123,8 +123,8 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Custom user model (added in Phase 1)
-# AUTH_USER_MODEL = 'accounts.User'
+# Custom user model
+AUTH_USER_MODEL = 'accounts.User'
 
 
 # Django REST Framework
