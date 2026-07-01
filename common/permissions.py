@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from accounts.models import Role
 
@@ -53,3 +53,22 @@ class IsHQStaffOrAbove(HasRole):
 class IsSubHQStaffOrAbove(HasRole):
     """Super Admin, HQ Admin, or Sub HQ Staff — e.g. Doctor write access within a Sub HQ."""
     allowed_roles = (Role.SUPER_ADMIN, Role.HQ_ADMIN, Role.SUB_HQ_STAFF)
+
+
+class RoleBasedCRUDPermission(BasePermission):
+    """
+    Generic per-method role gate: `read_roles` may use safe methods
+    (GET/HEAD/OPTIONS), `write_roles` may use unsafe methods (POST/PUT/
+    PATCH/DELETE). Subclasses set both tuples. Combine with queryset
+    scoping (see `common.mixins.HierarchyScopedQuerysetMixin`) to restrict
+    *which* rows are visible/editable — this class only gates the verb.
+    """
+    read_roles: tuple = ()
+    write_roles: tuple = ()
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        allowed_roles = self.read_roles if request.method in SAFE_METHODS else self.write_roles
+        return user.role in allowed_roles
