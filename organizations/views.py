@@ -1,13 +1,14 @@
 from rest_framework import viewsets
 
 from accounts.models import Role
+from common.mixins import AuditLogMixin
 
 from .models import Headquarters, SubHeadquarters
 from .permissions import HeadquartersPermission, SubHeadquartersPermission
 from .serializers import HeadquartersSerializer, SubHeadquartersSerializer
 
 
-class HeadquartersViewSet(viewsets.ModelViewSet):
+class HeadquartersViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = Headquarters.objects.all()
     serializer_class = HeadquartersSerializer
     permission_classes = [HeadquartersPermission]
@@ -27,9 +28,12 @@ class HeadquartersViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+        self.audit_logger.info(
+            'Created Headquarters id=%s by user=%s', serializer.instance.pk, self.request.user,
+        )
 
 
-class SubHeadquartersViewSet(viewsets.ModelViewSet):
+class SubHeadquartersViewSet(AuditLogMixin, viewsets.ModelViewSet):
     queryset = SubHeadquarters.objects.select_related('headquarters').all()
     serializer_class = SubHeadquartersSerializer
     permission_classes = [SubHeadquartersPermission]
@@ -51,3 +55,6 @@ class SubHeadquartersViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+        self.audit_logger.info(
+            'Created SubHeadquarters id=%s by user=%s', serializer.instance.pk, self.request.user,
+        )

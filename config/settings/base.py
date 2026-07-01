@@ -151,3 +151,57 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+
+# Logging
+# https://docs.djangoproject.com/en/5.2/topics/logging/
+# dev.py / prod.py extend this with environment-specific handlers.
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {name} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        # Local apps: accounts, organizations, doctors, visits, dashboard, reports
+        'accounts': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'organizations': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'doctors': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'visits': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'dashboard': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'reports': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+}

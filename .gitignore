@@ -5,6 +5,7 @@ __pycache__/
 venv/
 *.sqlite3
 staticfiles/
+logs/
 .pytest_cache/
 .coverage
 htmlcov/

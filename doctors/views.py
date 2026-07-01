@@ -1,13 +1,13 @@
 from rest_framework import viewsets
 
-from common.mixins import HierarchyScopedQuerysetMixin
+from common.mixins import AuditLogMixin, HierarchyScopedQuerysetMixin
 
 from .models import Doctor
 from .permissions import DoctorPermission
 from .serializers import DoctorSerializer
 
 
-class DoctorViewSet(HierarchyScopedQuerysetMixin, viewsets.ModelViewSet):
+class DoctorViewSet(HierarchyScopedQuerysetMixin, AuditLogMixin, viewsets.ModelViewSet):
     queryset = Doctor.objects.select_related('headquarters', 'sub_headquarters', 'assigned_mr').all()
     serializer_class = DoctorSerializer
     permission_classes = [DoctorPermission]
@@ -22,3 +22,6 @@ class DoctorViewSet(HierarchyScopedQuerysetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+        self.audit_logger.info(
+            'Created Doctor id=%s by user=%s', serializer.instance.pk, self.request.user,
+        )

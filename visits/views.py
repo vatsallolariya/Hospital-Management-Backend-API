@@ -4,7 +4,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from common.mixins import HierarchyScopedQuerysetMixin
+from common.mixins import AuditLogMixin, HierarchyScopedQuerysetMixin
 
 from .models import Visit, VisitStatus
 from .permissions import VisitPermission
@@ -19,7 +19,7 @@ class VisitFilterSet(django_filters.FilterSet):
         fields = ['status', 'doctor', 'mr', 'date']
 
 
-class VisitViewSet(HierarchyScopedQuerysetMixin, viewsets.ModelViewSet):
+class VisitViewSet(HierarchyScopedQuerysetMixin, AuditLogMixin, viewsets.ModelViewSet):
     queryset = Visit.objects.select_related('doctor', 'mr').all()
     serializer_class = VisitSerializer
     permission_classes = [VisitPermission]
@@ -34,10 +34,19 @@ class VisitViewSet(HierarchyScopedQuerysetMixin, viewsets.ModelViewSet):
         """MR sees only their own Visits, not the whole HQ/Sub HQ (per §4)."""
         return qs.filter(mr_id=user.id)
 
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        self.audit_logger.info(
+            'Created Visit id=%s by user=%s', serializer.instance.pk, self.request.user,
+        )
+
     @action(detail=True, methods=['post'], url_path='mark-visit')
     def mark_visit(self, request, pk=None):
         visit = self.get_object()
         if visit.status != VisitStatus.PENDING:
+            self.audit_logger.warning(
+                'Rejected mark-visit on Visit id=%s status=%s by user=%s', visit.pk, visit.status, request.user,
+            )
             return Response(
                 {'detail': f'Cannot mark a {visit.status.lower()} visit as completed.'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -50,4 +59,5 @@ class VisitViewSet(HierarchyScopedQuerysetMixin, viewsets.ModelViewSet):
         if 'purpose' in request.data:
             visit.purpose = request.data['purpose']
         visit.save()
+        self.audit_logger.info('Marked Visit id=%s completed by user=%s', visit.pk, request.user)
         return Response(self.get_serializer(visit).data)

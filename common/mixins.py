@@ -1,6 +1,60 @@
+import logging
+
 from django.db.models import Q
 
 from accounts.models import Role
+
+
+class AuditLogMixin:
+    """
+    Logs CRUD actions and permission denials for DRF views/viewsets, via the
+    per-app logger configured in settings.LOGGING (e.g. "doctors", "visits").
+    Mutating actions (create/update/delete) and permission denials log at
+    INFO/WARNING for the audit trail; reads (list/retrieve) log at DEBUG.
+
+    Only hooks methods the view actually calls (list/retrieve/perform_update/
+    perform_destroy). perform_create is deliberately NOT overridden here:
+    several ViewSets already override it directly (e.g. to stamp
+    `created_by`) without calling super(), which would silently skip this
+    mixin's logging. Call `self.audit_logger.info(...)` explicitly from those
+    instead.
+    """
+
+    @property
+    def audit_logger(self):
+        return logging.getLogger(self.__class__.__module__.split('.')[0])
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        self.audit_logger.debug('Listed %s by user=%s', self.get_queryset().model.__name__, request.user)
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        self.audit_logger.debug(
+            'Retrieved %s id=%s by user=%s', self.get_queryset().model.__name__, kwargs.get('pk'), request.user,
+        )
+        return response
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        self.audit_logger.info(
+            'Updated %s id=%s by user=%s',
+            serializer.instance.__class__.__name__, serializer.instance.pk, self.request.user,
+        )
+
+    def perform_destroy(self, instance):
+        model_name = instance.__class__.__name__
+        pk = instance.pk
+        super().perform_destroy(instance)
+        self.audit_logger.info('Deleted %s id=%s by user=%s', model_name, pk, self.request.user)
+
+    def permission_denied(self, request, message=None, code=None):
+        self.audit_logger.warning(
+            'Permission denied: user=%s action=%s view=%s',
+            request.user, getattr(self, 'action', request.method), self.__class__.__name__,
+        )
+        super().permission_denied(request, message=message, code=code)
 
 
 class HierarchyScopedQuerysetMixin:

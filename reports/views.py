@@ -3,7 +3,7 @@ from django.db.models import Q
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 
-from common.mixins import HierarchyScopedQuerysetMixin
+from common.mixins import AuditLogMixin, HierarchyScopedQuerysetMixin
 from visits.models import Visit
 from visits.serializers import VisitSerializer
 
@@ -24,7 +24,7 @@ class VisitReportFilterSet(django_filters.FilterSet):
         )
 
 
-class VisitReportView(HierarchyScopedQuerysetMixin, generics.ListAPIView):
+class VisitReportView(HierarchyScopedQuerysetMixin, AuditLogMixin, generics.ListAPIView):
     """
     Per §5/§4: read-only, filtered/paginated/sortable report over Visits,
     scoped to the requesting user's role/hierarchy position (same scoping as

@@ -1,20 +1,36 @@
+import logging
+
 from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.exceptions import AuthenticationFailed, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+from common.mixins import AuditLogMixin
 
 from .models import Role, User
 from .permissions import UserPermission
 from .serializers import CustomTokenObtainPairSerializer, MeSerializer, UserSerializer
 
+logger = logging.getLogger(__name__)
+
 
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        try:
+            response = super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            logger.warning('Login failed for email=%s: invalid credentials', email)
+            raise
+        logger.info('Login succeeded for email=%s', email)
+        return response
 
 
 class LogoutView(APIView):
@@ -28,7 +44,9 @@ class LogoutView(APIView):
             token = RefreshToken(refresh)
             token.blacklist()
         except TokenError:
+            logger.warning('Logout failed for user=%s: invalid or expired refresh token', request.user)
             return Response({'detail': 'Invalid or expired refresh token.'}, status=400)
+        logger.info('Logout succeeded for user=%s', request.user)
         return Response(status=204)
 
 
@@ -40,7 +58,7 @@ class MeView(RetrieveAPIView):
         return self.request.user
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(AuditLogMixin, viewsets.ModelViewSet):
     """
     Per §4: Super Admin manages all users; HQ Admin manages HQ Staff, Sub HQ
     Staff, and MR accounts under their own Headquarters. No other role has a
@@ -65,3 +83,9 @@ class UserViewSet(viewsets.ModelViewSet):
                 Q(headquarters_id=user.headquarters_id) | Q(sub_headquarters__headquarters_id=user.headquarters_id)
             )
         return qs.none()
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        self.audit_logger.info(
+            'Created User id=%s email=%s by user=%s', serializer.instance.pk, serializer.instance.email, self.request.user,
+        )
