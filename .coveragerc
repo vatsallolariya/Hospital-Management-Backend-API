@@ -1,0 +1,14 @@
+[run]
+source = .
+omit =
+    .venv/*
+    manage.py
+    config/*
+    */migrations/*
+    */admin.py
+    */apps.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
