@@ -165,6 +165,36 @@
           }
         },
         {
+          "name": "Create MR User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.environment.set('mr_user_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"priya.patel@hospital.local\",\n  \"password\": \"change-me-123\",\n  \"first_name\": \"Priya\",\n  \"last_name\": \"Patel\",\n  \"role\": \"MR\",\n  \"headquarters\": {{headquarters_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "users", "" ]
+            },
+            "description": "Creates a Medical Representative (role MR) under the same Headquarters as the seeded Doctor and saves its id as mr_user_id. Needed so Super Admin / HQ roles can supply mr when creating a Visit."
+          }
+        },
+        {
           "name": "Retrieve User",
           "request": {
             "method": "GET",
@@ -524,14 +554,14 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"doctor\": {{doctor_id}},\n  \"visit_date\": \"2026-07-01\",\n  \"status\": \"PENDING\",\n  \"purpose\": \"Routine follow-up\",\n  \"remarks\": \"\"\n}"
+              "raw": "{\n  \"doctor\": {{doctor_id}},\n  \"mr\": {{mr_user_id}},\n  \"visit_date\": \"2026-07-01\",\n  \"status\": \"PENDING\",\n  \"purpose\": \"Routine follow-up\",\n  \"remarks\": \"\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/visits/",
               "host": [ "{{base_url}}" ],
               "path": [ "visits", "" ]
             },
-            "description": "As MR: mr is forced server-side to the requesting user (any client-supplied mr is ignored) and doctor must be the MR's own assigned doctor."
+            "description": "As Super Admin / HQ roles: mr is required and must be an MR in the same Headquarters/Sub HQ as the doctor (run Create MR User first to set mr_user_id). As MR: mr is forced server-side to the requesting user (the supplied mr is ignored) and doctor must be the MR's own assigned doctor."
           }
         },
         {

@@ -18,6 +18,7 @@ access control (RBAC), role-scoped dashboard metrics, and filterable reporting.
 2. [Architecture](#2-architecture)
    - [2.1 Role Hierarchy](#21-role-hierarchy)
    - [2.2 RBAC Matrix](#22-rbac-matrix)
+   - [2.3 Data Setup Workflow](#23-data-setup-workflow)
 3. [Getting Started](#3-getting-started)
    - [3.1 Prerequisites](#31-prerequisites)
    - [3.2 Clone & Environment Setup](#32-clone--environment-setup)
@@ -114,6 +115,44 @@ and `sub_headquarters`.
 > to Doctors and Visits within its own HQ: those are capabilities of the HQ
 > Staff sitting below it. Row-level access is always constrained to the user's
 > own HQ / Sub HQ by the queryset-scoping layer.
+
+### 2.3 Data Setup Workflow
+
+A fresh database contains only the seeded Super Admin. Because every entity
+depends on the one above it in the hierarchy, build data **top-down** in this
+order (this is also the order the Postman requests are meant to be run in):
+
+| # | Who does it | Create | Why / depends on |
+|---|---|---|---|
+| 1 | — | **Log in** as Super Admin (`admin@gmail.com`) | Get the access token; nothing works without it |
+| 2 | Super Admin | **Headquarters** (e.g. "Mumbai Zone HQ") | The root of the tree; everything hangs off an HQ |
+| 3 | Super Admin / HQ Admin | **Sub Headquarters** (optional) | Belongs to an HQ; skip it for a small, single-office setup |
+| 4 | Super Admin | **HQ Admin** user | The zone manager who can then run steps 5–8 themselves |
+| 5 | Super Admin / HQ Admin | **HQ Staff / Sub HQ Staff** users (optional) | Office-level clerks |
+| 6 | Super Admin / HQ Admin | **MR** user | The field rep who logs Visits |
+| 7 | Super Admin / HQ / Sub HQ | **Doctor** | The person an MR visits |
+| 8 | Super Admin / HQ / Sub HQ | Assign MR to Doctor (`PATCH doctor.assigned_mr`) | Lets that MR create Visits for this Doctor |
+| 9 | MR (or any manager) | **Visit**, then **mark-visit** | The actual field activity being tracked |
+
+There is **no "Sub HQ Admin" role** — a Sub Headquarters is managed by the HQ
+Admin of its parent Headquarters.
+
+**Location fields per role.** When creating a User, `headquarters` /
+`sub_headquarters` are validated per role (`accounts/models.py`,
+`accounts/serializers.py`). Sending the wrong combination returns a 400:
+
+| Role | `headquarters` | `sub_headquarters` |
+|---|:---:|:---:|
+| `SUPER_ADMIN` | omit | omit |
+| `HQ_ADMIN` | **required** | omit |
+| `HQ_STAFF` | **required** | omit |
+| `SUB_HQ_STAFF` | omit | **required** |
+| `MR` | exactly **one** of the two | exactly **one** of the two |
+
+`Doctor` follows the same "exactly one of `headquarters` / `sub_headquarters`"
+rule. When a non-MR creates a **Visit**, `mr` is required in the body and must
+be an MR under the same HQ / Sub HQ as the Doctor; when an MR creates a Visit,
+`mr` is set to that MR automatically and the Doctor must be one assigned to them.
 
 ---
 
