@@ -39,7 +39,7 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@hospital.local\",\n  \"password\": \"change-me\"\n}"
+              "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"admin123\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/auth/login/",
@@ -154,7 +154,7 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"new.staff@hospital.local\",\n  \"password\": \"change-me-123\",\n  \"first_name\": \"New\",\n  \"last_name\": \"Staff\",\n  \"role\": \"HQ_STAFF\",\n  \"headquarters\": {{headquarters_id}}\n}"
+              "raw": "{\n  \"email\": \"rahul.sharma@hospital.local\",\n  \"password\": \"change-me-123\",\n  \"first_name\": \"Rahul\",\n  \"last_name\": \"Sharma\",\n  \"role\": \"HQ_STAFF\",\n  \"headquarters\": {{headquarters_id}}\n}"
             },
             "url": {
               "raw": "{{base_url}}/users/",
@@ -246,7 +246,7 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"North Zone HQ\",\n  \"code\": \"NZ01\",\n  \"address\": \"123 Main St\",\n  \"city\": \"Metropolis\",\n  \"state\": \"State\",\n  \"is_active\": true\n}"
+              "raw": "{\n  \"name\": \"Mumbai Zone HQ\",\n  \"code\": \"MH01\",\n  \"address\": \"Plot 12, Andheri East\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"is_active\": true\n}"
             },
             "url": {
               "raw": "{{base_url}}/headquarters/",
@@ -336,7 +336,7 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"headquarters\": {{headquarters_id}},\n  \"name\": \"East Wing Sub HQ\",\n  \"code\": \"EW01\",\n  \"address\": \"456 Side St\",\n  \"is_active\": true\n}"
+              "raw": "{\n  \"headquarters\": {{headquarters_id}},\n  \"name\": \"Pune Sub HQ\",\n  \"code\": \"PN01\",\n  \"address\": \"Shop 5, FC Road, Shivajinagar\",\n  \"is_active\": true\n}"
             },
             "url": {
               "raw": "{{base_url}}/sub-headquarters/",
@@ -429,7 +429,7 @@
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Dr. Jane Doe\",\n  \"specialization\": \"Cardiology\",\n  \"phone\": \"9999999999\",\n  \"email\": \"jane.doe@clinic.example\",\n  \"clinic_name\": \"City Clinic\",\n  \"address\": \"12 Health Rd\",\n  \"headquarters\": {{headquarters_id}},\n  \"sub_headquarters\": null,\n  \"assigned_mr\": null,\n  \"is_active\": true\n}"
+              "raw": "{\n  \"name\": \"Dr. Anjali Verma\",\n  \"specialization\": \"Cardiology\",\n  \"phone\": \"9876543210\",\n  \"email\": \"anjali.verma@clinic.example\",\n  \"clinic_name\": \"Aarogya Clinic\",\n  \"address\": \"21 MG Road, Pune\",\n  \"headquarters\": {{headquarters_id}},\n  \"sub_headquarters\": null,\n  \"assigned_mr\": null,\n  \"is_active\": true\n}"
             },
             "url": {
               "raw": "{{base_url}}/doctors/",

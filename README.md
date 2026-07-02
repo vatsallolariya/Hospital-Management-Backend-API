@@ -161,7 +161,7 @@ python manage.py migrate
 
 python manage.py seed_superadmin
 # or explicitly:
-python manage.py seed_superadmin --email admin@hospital.local --password change-me
+python manage.py seed_superadmin --email admin@gmail.com --password admin123
 ```
 
 `seed_superadmin` reads `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` from `.env`
@@ -210,8 +210,8 @@ coverage report -m
 | `POSTGRES_PORT` | Database port | `5433` |
 | `DJANGO_SECRET_KEY` | Django secret key — set a real random value outside local dev | `change-me-in-prod` |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hosts | `localhost,127.0.0.1` |
-| `SUPERADMIN_EMAIL` | Used by `seed_superadmin` | `admin@hospital.local` |
-| `SUPERADMIN_PASSWORD` | Used by `seed_superadmin` | `change-me` |
+| `SUPERADMIN_EMAIL` | Used by `seed_superadmin` | `admin@gmail.com` |
+| `SUPERADMIN_PASSWORD` | Used by `seed_superadmin` | `admin123` |
 
 `.env.example` mirrors this table with placeholder (non-secret) values — copy
 it to `.env` and adjust locally. **Never commit a real `.env`.**
